@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Polymarket 自动交易机器人</title>
+    <style>
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        margin: 0;
+        background: #0f172a;
+        color: #f8fafc;
+      }
+      header {
+        padding: 24px 32px;
+        background: #1e293b;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      main {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        padding: 24px 32px 48px;
+      }
+      .card {
+        background: #1e293b;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 12px 40px rgba(15, 23, 42, 0.4);
+      }
+      .status-pill {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #0f766e;
+        font-size: 14px;
+      }
+      label {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 6px;
+        color: #cbd5f5;
+      }
+      input, select, button {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #334155;
+        background: #0f172a;
+        color: #f8fafc;
+        margin-bottom: 12px;
+      }
+      button {
+        background: #38bdf8;
+        border: none;
+        color: #0f172a;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #64748b;
+        color: #f8fafc;
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+      }
+      .log {
+        max-height: 280px;
+        overflow-y: auto;
+        font-size: 13px;
+        background: #0f172a;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .log-entry {
+        border-bottom: 1px solid #1e293b;
+        padding: 8px 0;
+      }
+      .log-entry:last-child {
+        border-bottom: none;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        padding: 8px 4px;
+        text-align: left;
+        font-size: 13px;
+        border-bottom: 1px solid #334155;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Polymarket 自动交易机器人</h1>
+        <p>实时监控订单簿 + 自动下单（演示模板）</p>
+      </div>
+      <div class="status-pill" id="status-pill">未连接</div>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>连接与控制</h2>
+        <div class="grid">
+          <button onclick="connect()">连接 WebSocket</button>
+          <button class="secondary" onclick="disconnect()">断开连接</button>
+        </div>
+        <h3>启动交易</h3>
+        <label for="market-id">Market ID</label>
+        <input id="market-id" placeholder="demo-market" />
+        <label for="strategy">策略模板</label>
+        <select id="strategy">
+          <option value="demo">示例策略</option>
+          <option value="mean-reversion">均值回归（占位）</option>
+          <option value="trend">趋势跟随（占位）</option>
+        </select>
+        <div class="grid">
+          <button onclick="startTrading()">开始交易</button>
+          <button class="secondary" onclick="stopTrading()">停止交易</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>订单簿</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Bid</th>
+              <th>Ask</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td id="bid-price">--</td>
+              <td id="ask-price">--</td>
+            </tr>
+            <tr>
+              <td id="bid-size">--</td>
+              <td id="ask-size">--</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>事件日志</h2>
+        <div class="log" id="log"></div>
+      </section>
+    </main>
+
+    <script>
+      let socket;
+
+      const logEl = document.getElementById("log");
+      const statusPill = document.getElementById("status-pill");
+
+      function addLog(message) {
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        entry.textContent = `${new Date().toLocaleTimeString()} ${message}`;
+        logEl.prepend(entry);
+      }
+
+      async function connect() {
+        await fetch("/api/connect", { method: "POST" });
+        statusPill.textContent = "已连接";
+        statusPill.style.background = "#0f766e";
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          socket = new WebSocket(`${location.origin.replace("http", "ws")}/ws/events`);
+          socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "orderbook") {
+              document.getElementById("bid-price").textContent = data.bids[0].price;
+              document.getElementById("bid-size").textContent = data.bids[0].size;
+              document.getElementById("ask-price").textContent = data.asks[0].price;
+              document.getElementById("ask-size").textContent = data.asks[0].size;
+            }
+            if (data.type === "trade") {
+              addLog(`下单: ${data.order.side} @ ${data.order.price}`);
+            }
+            if (data.type === "status") {
+              addLog(data.message);
+            }
+          };
+        }
+      }
+
+      async function disconnect() {
+        await fetch("/api/disconnect", { method: "POST" });
+        statusPill.textContent = "未连接";
+        statusPill.style.background = "#475569";
+        addLog("连接已断开");
+      }
+
+      async function startTrading() {
+        const marketId = document.getElementById("market-id").value || "demo-market";
+        const strategy = document.getElementById("strategy").value;
+        await fetch("/api/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ market_id: marketId, strategy }),
+        });
+        addLog(`开始交易: ${marketId} (${strategy})`);
+      }
+
+      async function stopTrading() {
+        await fetch("/api/stop", { method: "POST" });
+        addLog("停止交易");
+      }
+
+      addLog("等待连接...");
+    </script>
+  </body>
+</html>
