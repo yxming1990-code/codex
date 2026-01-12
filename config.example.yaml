@@ -1,0 +1,89 @@
+# Predict Market Maker Configuration
+# Copy this file to config.yaml and customize
+
+# Environment: testnet or mainnet
+environment: testnet
+
+# Market allowlist (market IDs or slugs)
+# Only these markets will be available for trading
+market_allowlist:
+  # - "market-id-1"
+  # - "market-slug-2"
+
+# Strategy defaults
+strategy:
+  # Pricing mode: sell_only (conservative) or two_sided
+  pricing_mode: sell_only
+
+  # Price offset from external market (in decimal, e.g., 0.01 = 1 cent)
+  offset: "0.01"
+
+  # Default order size in shares
+  order_size: "10"
+
+  # Maximum new shares before auto-pause (per market)
+  max_new_shares: 1000
+
+  # Enable automatic price adjustments
+  auto_pricing_enabled: true
+
+  # Enable automatic position merging
+  merge_enabled: true
+
+# Risk management
+risk:
+  # Maximum price jump before triggering pause (e.g., 0.02 = 2 cents)
+  jump_threshold: "0.02"
+
+  # Maximum consecutive price fetch failures before pause
+  max_consecutive_failures: 3
+
+  # Maximum new shares per market (same as strategy.max_new_shares)
+  max_new_shares: 1000
+
+# Rate limiting
+rate_limit:
+  # Predict API requests per minute
+  predict_rpm: 240
+
+  # External API (Polymarket/Kalshi) requests per minute
+  external_rpm: 120
+
+  # Maximum retry attempts for failed requests
+  retry_max_attempts: 4
+
+  # Base delay for exponential backoff (seconds)
+  retry_base_delay: 2.0
+
+# Polling intervals (seconds)
+polling:
+  # External price feed interval
+  external_price_interval: 30
+
+  # Predict orderbook polling interval
+  orderbook_interval: 30
+
+  # Position check interval
+  positions_interval: 60
+
+  # Match event check interval
+  matches_interval: 30
+
+  # Market list refresh interval
+  markets_refresh_interval: 300
+
+# Database
+database_path: "market_maker.db"
+
+# Safety settings
+# WARNING: Only enable fast order removal if you understand the risks!
+use_fast_order_removal: false
+
+# Cancel all orders on exit (recommended)
+safe_exit_enabled: true
+
+# Auto-resume ACTIVE markets on restart (not recommended for safety)
+auto_resume_on_restart: false
+
+# UI settings
+ui_refresh_interval: 1.0
